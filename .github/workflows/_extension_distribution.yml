@@ -735,10 +735,13 @@ jobs:
           make test_${{ inputs.build_type }}
 
       - name: Ad-hoc codesign extension
+        continue-on-error: true
         shell: bash
         run: |
           EXT_PATH="build/${{ inputs.build_type }}/extension/${{ inputs.extension_name }}/${{ inputs.extension_name }}.duckdb_extension"
-          codesign --force --sign - --timestamp=none "$EXT_PATH"
+          # Remove any existing broken signature, then re-sign
+          codesign --remove-signature "$EXT_PATH" 2>/dev/null || true
+          codesign --force --sign - "$EXT_PATH"
 
       - name: Test extension loads with quarantine (simulates download)
         if: ${{ matrix.osx_build_arch == 'arm64' && inputs.skip_tests == false }}

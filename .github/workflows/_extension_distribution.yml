@@ -734,6 +734,21 @@ jobs:
           eval "$(jq -r '.test_env_variables // {} | to_entries[] | "export \(.key)=\(.value | @sh)"' <<< '${{inputs.test_config}}')"
           make test_${{ inputs.build_type }}
 
+      - name: Ad-hoc codesign extension
+        shell: bash
+        run: |
+          EXT_PATH="build/${{ inputs.build_type }}/extension/${{ inputs.extension_name }}/${{ inputs.extension_name }}.duckdb_extension"
+          codesign --force --sign - "$EXT_PATH"
+          codesign -v "$EXT_PATH"
+
+      - name: Test extension loads with quarantine (simulates download)
+        if: ${{ matrix.osx_build_arch == 'arm64' && inputs.skip_tests == false }}
+        shell: bash
+        run: |
+          EXT_PATH="build/${{ inputs.build_type }}/extension/${{ inputs.extension_name }}/${{ inputs.extension_name }}.duckdb_extension"
+          xattr -w com.apple.quarantine "0083;$(printf '%x' $(date +%s));CI;$(uuidgen)" "$EXT_PATH"
+          build/${{ inputs.build_type }}/duckdb -c "LOAD '$EXT_PATH'"
+
       - uses: actions/upload-artifact@v4
         if: ${{ !inputs.upload_all_extensions }}
         with:

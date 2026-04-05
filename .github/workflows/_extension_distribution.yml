@@ -12,6 +12,8 @@ name: Extension distribution
 on:
   workflow_call:
     secrets:
+      PAT_TOKEN:
+        required: false
       VCPKG_CACHING_AWS_ACCESS_KEY_ID:
         required: false
       VCPKG_CACHING_AWS_SECRET_ACCESS_KEY:
@@ -312,6 +314,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: 'recursive'
+          token: ${{ secrets.PAT_TOKEN || github.token }}
 
       - uses: actions/checkout@v4
         name: Checkout Extension CI tools
@@ -558,6 +561,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: 'recursive'
+          token: ${{ secrets.PAT_TOKEN || github.token }}
 
       - name: Install Ninja
         run: |
@@ -827,6 +831,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: 'recursive'
+          token: ${{ secrets.PAT_TOKEN || github.token }}
 
       - uses: actions/setup-python@v5
         with:
@@ -1075,6 +1080,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: 'recursive'
+          token: ${{ secrets.PAT_TOKEN || github.token }}
 
       - uses: actions/checkout@v4
         name: Checkout Extension CI tools

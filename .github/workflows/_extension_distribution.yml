@@ -359,15 +359,21 @@ jobs:
           repository: ${{ inputs.override_ci_tools_repository }}
           fetch-depth: 0
 
-      - name: Build Docker image
-        shell: bash
-        run: |
-          docker build \
-            --build-arg 'vcpkg_url=${{ inputs.vcpkg_url }}' \
-            --build-arg 'vcpkg_commit=${{ inputs.vcpkg_commit }}' \
-            --build-arg 'extra_toolchains=${{ inputs.enable_rust  && format(';{0};rust;', inputs.extra_toolchains) || format(';{0};', inputs.extra_toolchains) }}' \
-            -t duckdb/${{ matrix.duckdb_arch }} \
-            ./extension-ci-tools/docker/${{ matrix.duckdb_arch }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (with R2 layer cache)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./extension-ci-tools/docker/${{ matrix.duckdb_arch }}
+          load: true
+          tags: duckdb/${{ matrix.duckdb_arch }}
+          build-args: |
+            vcpkg_url=${{ inputs.vcpkg_url }}
+            vcpkg_commit=${{ inputs.vcpkg_commit }}
+            extra_toolchains=${{ inputs.enable_rust && format(';{0};rust;', inputs.extra_toolchains) || format(';{0};', inputs.extra_toolchains) }}
+          cache-from: type=s3,endpoint_url=${{ secrets.VCPKG_CACHING_AWS_ENDPOINT_URL }},bucket=vcpkg-cache,region=${{ secrets.VCPKG_CACHING_AWS_DEFAULT_REGION || 'auto' }},name=docker-${{ matrix.duckdb_arch }},access_key_id=${{ secrets.VCPKG_CACHING_AWS_ACCESS_KEY_ID }},secret_access_key=${{ secrets.VCPKG_CACHING_AWS_SECRET_ACCESS_KEY }}
+          cache-to: type=s3,endpoint_url=${{ secrets.VCPKG_CACHING_AWS_ENDPOINT_URL }},bucket=vcpkg-cache,region=${{ secrets.VCPKG_CACHING_AWS_DEFAULT_REGION || 'auto' }},name=docker-${{ matrix.duckdb_arch }},access_key_id=${{ secrets.VCPKG_CACHING_AWS_ACCESS_KEY_ID }},secret_access_key=${{ secrets.VCPKG_CACHING_AWS_SECRET_ACCESS_KEY }},mode=max
 
       - name: Create env file for docker
         run: |

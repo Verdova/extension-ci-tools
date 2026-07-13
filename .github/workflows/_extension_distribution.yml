@@ -952,6 +952,17 @@ jobs:
         run: |
           make set_duckdb_tag
 
+      # The plain windows_amd64 build uses the MSVC toolchain (the vcpkg deps are
+      # built for the MSVC ABI, x64-windows-static-release). Hosted windows-latest
+      # images no longer activate the MSVC dev environment by default, so a bare
+      # Ninja build would auto-detect MinGW g++ and fail to link the MSVC-ABI libs.
+      # Explicitly enable the MSVC dev command prompt so cl.exe is used.
+      - name: Enable MSVC developer command prompt (windows_amd64)
+        if: matrix.duckdb_arch == 'windows_amd64'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11.1
         with:

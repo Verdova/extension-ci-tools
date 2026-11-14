@@ -251,12 +251,18 @@ jobs:
       GEN: ninja
       BUILD_SHELL: ${{ inputs.build_duckdb_shell && '1' || '0' }}
       DUCKDB_PLATFORM: ${{ matrix.duckdb_arch }}
+      # True unless `runners` pins THIS arch. The disk cleanup and the move of Docker
+      # to /mnt assume a GitHub-hosted Ubuntu runner, so they must be skipped on a
+      # custom Linux runner -- but pinning another platform (e.g. windows_amd64 to
+      # windows-2022) must not turn them off here: without them a cold Docker layer
+      # cache runs the linux image build out of disk.
+      LINUX_DEFAULT_RUNNER: ${{ !contains(inputs.runners, format('"{0}"', matrix.duckdb_arch)) }}
 
     steps:
       - name: Free disk space 1
         uses: endersonmenezes/free-disk-space@v2.1.1
         continue-on-error: true
-        if: ${{ inputs.run_disk_clean_step && env.USE_DEFAULT_RUNNERS == 'true' }}
+        if: ${{ inputs.run_disk_clean_step && env.LINUX_DEFAULT_RUNNER == 'true' }}
         with:
 #          remove_android: true # ~9.5GB in #52s
 #          remove_dotnet: true
@@ -269,7 +275,7 @@ jobs:
 
       - name: Free disk space 2
         continue-on-error: true
-        if: ${{ inputs.run_disk_clean_step && env.USE_DEFAULT_RUNNERS == 'true' }}
+        if: ${{ inputs.run_disk_clean_step && env.LINUX_DEFAULT_RUNNER == 'true' }}
         run: |
           docker images -a -q > package.list
           if [ -s package.list ]; then
@@ -281,22 +287,22 @@ jobs:
           rm package.list
 
       - name: Restart docker to run on /mnt
-        if: ${{ env.USE_DEFAULT_RUNNERS == 'true' }}
+        if: ${{ env.LINUX_DEFAULT_RUNNER == 'true' }}
         run: |
           sudo systemctl stop docker
 
       - name: Configure Docker with custom data directory
-        if: ${{ env.USE_DEFAULT_RUNNERS == 'true' }}
+        if: ${{ env.LINUX_DEFAULT_RUNNER == 'true' }}
         run: |
           sudo mkdir -p /mnt/docker-data
           echo '{ "data-root": "/mnt/docker-data" }' | sudo tee /etc/docker/daemon.json
 
       - name: Start Docker with updated storage path
-        if: ${{ env.USE_DEFAULT_RUNNERS == 'true' }}
+        if: ${{ env.LINUX_DEFAULT_RUNNER == 'true' }}
         run: sudo systemctl start docker
 
       - name: Verify Docker storage path
-        if: ${{ env.USE_DEFAULT_RUNNERS == 'true' }}
+        if: ${{ env.LINUX_DEFAULT_RUNNER == 'true' }}
         run: docker info | grep "Docker Root Dir"
 
       - uses: actions/checkout@v4
